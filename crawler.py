@@ -1,31 +1,58 @@
 __author__ = '怡炜'
 
 
-def crawler():
-    import httplib2
-    import json
-    import bs4
-    import re
+import re
+import json
+import random
+import httplib2
+from time import time
+from bs4 import BeautifulSoup
 
-    url = r"http://item.taobao.com/item.htm?spm=a219r.lm893.14.38.A1oXVV&id=41239809200&ns=1&abbucket=3#detail"
+
+def generate_id(url):
+    auctionId = re.search('id=(\d+)', url).group(1)
     h = httplib2.Http()
     response, content = h.request(url)
-    soup = bs4.BeautifulSoup(content)
-    # open(r'C:\Users\怡炜\Desktop\content.txt', 'w').write(content.decode("gbk"))
+    soup = BeautifulSoup(content)
+    open(r'C:\Users\怡炜\Desktop\content.txt', 'w').write(content.decode("gbk"))
     ids = soup.meta.find(attrs={'name': 'microscope-data'}).attrs['content']
     splitid = re.split(';', ids)
-    pageId = re.split('=', splitid[0])[1]
-    prototypeId = re.split('=', splitid[1])[1]
+    # pageId = re.split('=', splitid[0])[1]
+    # prototypeId = re.split('=', splitid[1])[1]
     siteId = re.split('=', splitid[2])[1]
-    shopId = re.split('=', splitid[3])[1]
+    # shopId = re.split('=', splitid[3])[1]
     userid = re.split('=', splitid[4])[1]
-    print('pageId='+pageId)
-    print('prototypeId='+prototypeId)
-    print('siteId='+siteId)
-    print('shopId='+shopId)
-    print('userid='+userid)
-    print(ids)
+    # print('pageId='+pageId)
+    # print('prototypeId='+prototypeId)
+    # print('siteId='+siteId)
+    # print('shopId='+shopId)
+    # print('userid='+userid)
+    # print(ids)
+    return {'userid': userid, 'auctionId': auctionId, 'siteId': siteId}
 
 
+def crawler():
+    url = r"http://item.taobao.com/item.htm?spm=a219r.lm893.14.35.YyNnUx&id=41239809200&ns=1&abbucket=3#detail"
+    ids = generate_id(url)
+    comments = open(r'C:\Users\怡炜\Desktop\comments.txt', 'w+')
+    for pageNum in range(1, 1000):
+        KsTS = str(int(time()*1000))+'_'+str(random.randint(1000, 9999))
+        rateUrl = 'http://rate.taobao.com/feedRateList.htm?_ksTS=%(KsTS)s&callback=jsonp_reviews_list&' \
+                  'userNumId=%(userid)s&auctionNumId=%(auctionNumId)s&siteID=%(siteId)s&currentPageNum=%(pageNum)s&' \
+                  'rateType=&orderType=sort_weight&showContent=1&attribute=&ua=' \
+                  % {'KsTS': KsTS, 'userid': ids['userid'], 'auctionNumId': ids['auctionId'],
+                     'siteId': ids['siteId'], 'pageNum': pageNum}
+        # print(rateUrl)
+        h = httplib2.Http()
+        response, content = h.request(rateUrl)
+        # open(r'C:\Users\怡炜\Desktop\content2.txt', 'w').write(content.decode("gbk"))
+        jsonContent = json.loads(content[23:-3].decode("gbk"))
+        for i in range(0, 19):
+            comment = jsonContent['comments'][i]['content'].replace('<br/>', '').replace('\n', '')
+            # print(comment)
+            comments.write(comment+'\n'*2)
 if __name__ == "__main__":
+    start = time()
     crawler()
+    stop = time()
+    print("processing time: %s" % str(stop-start))
